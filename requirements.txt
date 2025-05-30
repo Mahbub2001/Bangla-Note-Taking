@@ -16,3 +16,7 @@ moviepy
 huggingface_hub
 pybase64
 reportlab
+groq
+opencv-python
+fpdf
+reportlab
