@@ -3,7 +3,7 @@ from moviepy import VideoFileClip
 from services.video_service import split_video
 from services.audio_service import extract_audio, transcribe_audio
 from services.image_service import extract_frame, analyze_image
-from services.text_service import summarize_segment, merge_summaries
+from services.text_service import summarize_segment
 from services.pdf_service import text_to_pdf
 import time
 import subprocess
@@ -14,9 +14,8 @@ def process_video_locally(video_path):
 
     segments = split_video(video_path)
     segment_summaries = []
-    
-    for seg_path in segments[:4]:
-    # for seg_path in segments:
+    total_segments = len(segments[:3])
+    for i,seg_path in enumerate(segments[:3]):
         try:
             audio_path = seg_path.replace(".mp4", ".wav")
             extract_audio(seg_path, audio_path)
@@ -27,12 +26,16 @@ def process_video_locally(video_path):
                 frame_path = seg_path.replace(".mp4", ".jpg")
                 extract_frame(seg_path, frame_time, frame_path)
                 image_desc = analyze_image(frame_path)
+                
+            position = (
+                "start" if i == 0 else
+                "end" if i == total_segments - 1 else
+                "middle"
+            )
             
-            summary = summarize_segment(transcript, image_desc)
+            summary = summarize_segment(transcript, image_desc,position)
             print(f"Summary for segment {os.path.basename(seg_path)}:\n{summary}\n")
             segment_summaries.append(summary)
-            with open(f"temp_summary_{os.path.basename(seg_path)}.txt", "w", encoding="utf-8") as f:
-                f.write(summary)
             
         finally:
             if os.path.exists(seg_path):
@@ -46,13 +49,15 @@ def process_video_locally(video_path):
                 os.remove(audio_path)
             if os.path.exists(frame_path):
                 os.remove(frame_path)
-
-    # final_notes = merge_summaries(segment_summaries)
-    # pdf_path = f"output_notes/notes_{os.path.basename(video_path)}.pdf"
-    # os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
-    # text_to_pdf(final_notes, pdf_path)
     
-    # print(f"Processing complete! PDF saved to: {pdf_path}")
+    if segment_summaries:
+        output_pdf = video_path.replace(".mp4", "_summary.pdf")
+        full_summary = "\n\n".join(segment_summaries)
+        with open("output.txt", "w", encoding="utf-8") as text_file:
+            text_file.write(full_summary)
+
+        # text_to_pdf(full_summary, output_pdf)
+        # print(f"PDF generated successfully at {output_pdf}")
 
 if __name__ == "__main__":
     video_file = "physics.mp4"
